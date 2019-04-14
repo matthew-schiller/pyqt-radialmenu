@@ -1,2 +1,2 @@
 # PyQt-RadialMenu
-Gestural radial menu for PyQt
+Gestural radial menu for PyQt.
