@@ -1,6 +1,6 @@
 # PyQt-RadialMenu
 Gestural radial menu for PyQt.
 
-Requires PySide2
+Requires Qt.py
 
 https://doc.qt.io/qtforpython/gettingstarted.html
