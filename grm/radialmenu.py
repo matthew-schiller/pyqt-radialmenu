@@ -2,7 +2,7 @@ import traceback
 import math
 import timeit
 import logging
-from PySide2 import QtWidgets, QtGui, QtCore
+from Qt import QtWidgets, QtGui, QtCore
 
 
 class RadialMenuItem(QtWidgets.QPushButton):

@@ -1,7 +1,7 @@
 import sys
 from functools import partial
-from PySide2 import QtWidgets
-from radialMenu import RadialMenu, RadialMenuItem
+from Qt import QtWidgets
+from grm.radialMenu import RadialMenu, RadialMenuItem
 
 
 class TestRadialMenuWindow(QtWidgets.QMainWindow):
