@@ -1,7 +1,7 @@
 import sys
 from functools import partial
 from Qt import QtWidgets
-from grm.radialMenu import RadialMenu, RadialMenuItem
+from grm.radialmenu import RadialMenu, RadialMenuItem
 
 
 class TestRadialMenuWindow(QtWidgets.QMainWindow):

@@ -3,6 +3,7 @@ import math
 import timeit
 import logging
 from Qt import QtWidgets, QtGui, QtCore
+#from PySide2 import QtWidgets, QtGui, QtCore
 
 
 class RadialMenuItem(QtWidgets.QPushButton):
@@ -191,8 +192,8 @@ class RadialMenu(QtWidgets.QMenu):
 
         # Radial item positions relative to center of radial menu
         r = self.screenRatio
-        self.position_xy = {'N':  [0*r,    - 90*r],
-                            'S':  [0*r,      90*r],
+        self.position_xy = {'N':  [0*r,    - 100*r],
+                            'S':  [0*r,      100*r],
                             'E':  [120*r,     0*r],
                             'W':  [-120*r,    0*r],
                             'NE': [85*r,    -45*r],
@@ -611,17 +612,14 @@ class RadialMenu(QtWidgets.QMenu):
 
 
 def get_screen_ratio():
+    """
+    Find the logical dots per inch for the screens and calc
+    a ratio from a fixed reference dpi.
+
+    :return: dpi ratio
+    """
     ref_dpi = 192.0
-    ref_height = 3240.0
-    ref_width = 2160.0
-
-    rect = QtGui.QGuiApplication.primaryScreen().geometry()
-    height = max(rect.width(), rect.height())
-    width = min(rect.width(), rect.height())
-    dpi = QtGui.QGuiApplication.primaryScreen().logicalDotsPerInch()
-    screen_ratio = min(height/ref_height, width/ref_width)
-    if screen_ratio < .8:
-        screen_ratio = .8
-    screen_font_ratio = min(height*ref_dpi/(dpi*ref_height), width*ref_dpi/(dpi*ref_width))
-    return screen_ratio, screen_font_ratio
-
+    screens = QtWidgets.QApplication.screens()
+    current_dpi = screens[0].logicalDotsPerInch()
+    ratio_dpi = current_dpi/ref_dpi
+    return ratio_dpi, ratio_dpi
