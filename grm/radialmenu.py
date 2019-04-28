@@ -2,8 +2,10 @@ import traceback
 import math
 import timeit
 import logging
-from Qt import QtWidgets, QtGui, QtCore
-#from PySide2 import QtWidgets, QtGui, QtCore
+try:
+    from Qt import QtWidgets, QtGui, QtCore
+except:
+    from PySide2 import QtWidgets, QtGui, QtCore
 
 
 class RadialMenuItem(QtWidgets.QPushButton):
