@@ -20,6 +20,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
     item.position - The position associated with the item. If None the
                     item will display in the column menu.
     TODO:
+    [] Check box drawing is not scaling correctly
     - Icons for items
     - Option boxes for items
     - Sub menus
@@ -81,7 +82,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
                 self.checkBox.show()
                 return
             box = QtWidgets.QCheckBox(self)
-            rect = QtCore.QRect(10*rf, 7*rf, 25*r, 25*r)
+            rect = QtCore.QRect(5*rf, 5*rf, 26*r, 26*r)
             box.setGeometry(rect)
             box.setChecked(True)
             self.checkBox = box
@@ -139,17 +140,23 @@ class RadialMenu(QtWidgets.QMenu):
         """
         QtWidgets.QMenu.__init__(self)
 
-        # Window
-        self.transparent = False 
+        # Transparent is set to false because windows managers with no transparency
+        #             do not work with transparency
+        self.transparent = False
+        # Draw cursor line - If true a line is draw from the center to the cursor
+        self.draw_cursor_line = False
+
+        # Window settings
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint | QtCore.Qt.NoDropShadowWindowHint)
         if self.transparent:
             self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
         # Ratio for different screen sizes
         self.screenRatio, self.screenFontRatio = get_screen_ratio()
+
         # Dimensions
         self.width = 1000 * self.screenRatio
         self.height = 2000 * self.screenRatio
-
         self.setFixedSize(self.width, self.height)
 
         # Timer for gestures
@@ -222,7 +229,7 @@ class RadialMenu(QtWidgets.QMenu):
 
         # Draw radial menu and its mask
         self.column_widget_rect = None
-        self.paintMask()
+        self.paint_mask()
 
     def add_item(self, item=None, text=None):
         self.items.append(item)
@@ -319,6 +326,11 @@ class RadialMenu(QtWidgets.QMenu):
 
     @staticmethod
     def get_text_dimensions(item):
+        """
+        Find the width and hieght of the text label of the item
+        :param item:
+        :return width, height:
+        """
         font = item.property('font')
         metric = QtGui.QFontMetrics(font)
         width = metric.width(item.text())
@@ -361,10 +373,10 @@ class RadialMenu(QtWidgets.QMenu):
                     item.slices.append(l)
                     slices_used.append(l)
 
-    def paintMask(self):
-        '''
+    def paint_mask(self):
+        """
         Paint a mask for the items so it is transparent around them.
-        '''
+        """
         self.painterMask.begin(self.maskPixmap)
 
         # Center background circle - Where the origin dot
@@ -393,12 +405,14 @@ class RadialMenu(QtWidgets.QMenu):
         try:
             # init painter - QPainting on self does not work outside this method
             self.painter.begin(self)
+
             cursor_pos = self.mapFromParent(QtGui.QCursor.pos())
             menu_center_pos = QtCore.QPoint(self.width*.5, self.height*.5)
 
             # Cursor line
-            self.painter.setPen(self.penCursorLine)
-            self.painter.drawLine(menu_center_pos, cursor_pos)
+            if self.draw_cursor_line:
+                self.painter.setPen(self.penCursorLine)
+                self.painter.drawLine(menu_center_pos, cursor_pos)
             # Origin circle - black outline
             offset = 2
             self.painter.setPen(self.penOrigin)
