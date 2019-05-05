@@ -1,10 +1,10 @@
-import sys
-from functools import partial
-from grm.radialmenu import RadialMenu, RadialMenuItem
 try:
     from Qt import QtWidgets
 except:
-    from PySide2 import QtWidgets
+    from PySide2 import QtWidgets, QtCore
+import sys
+from functools import partial
+from grm.radialmenu import RadialMenu, RadialMenuItem
 
 
 
@@ -95,10 +95,20 @@ class TestRadialMenuWindow(QtWidgets.QMainWindow):
             widget.checkBox.setChecked(not(widget.checkBox.checkState()))
 
 
-app = QtWidgets.QApplication(sys.argv)
-window = TestRadialMenuWindow()
-window.show()
-sys.exit(app.exec_())
 
+
+activeWindow = QtWidgets.QApplication.activeWindow()
+
+if activeWindow:
+    title = activeWindow.windowTitle()
+    window = TestRadialMenuWindow()
+    window.setParent(activeWindow)
+    window.setWindowFlags(QtCore.Qt.Window)
+    window.show()
+if not activeWindow:
+    app = QtWidgets.QApplication(sys.argv)
+    window = TestRadialMenuWindow()
+    window.show()
+    sys.exit(app.exec_())
 
 

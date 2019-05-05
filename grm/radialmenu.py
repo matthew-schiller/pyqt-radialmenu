@@ -204,12 +204,12 @@ class RadialMenu(QtWidgets.QMenu):
         r = self.screen_ratio
         self.position_xy = {'N':  [0*r,    - 100*r],
                             'S':  [0*r,      100*r],
-                            'E':  [120*r,     0*r],
-                            'W':  [-120*r,    0*r],
-                            'NE': [85*r,    -45*r],
-                            'NW': [-85*r,   -45*r],
-                            'SE': [85*r,     45*r],
-                            'SW': [-85*r,    45*r]}
+                            'E':  [120*r,      0*r],
+                            'W':  [-120*r ,    0*r],
+                            'NE': [85*r,     -45*r],
+                            'NW': [-85*r,    -45*r],
+                            'SE': [85*r,      45*r],
+                            'SW': [-85*r,     45*r]}
         # Slices - Each number represents a 22.5 degree slice, so each 
         #          position gets a 45 degree slice of the pie
         self.slices = {'E':  [15,  0],
