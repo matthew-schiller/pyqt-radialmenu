@@ -1,7 +1,9 @@
 try:
     from Qt import QtWidgets, QtCore
+    print('radial_menu: Using Qt.py')
 except:
     from PySide2 import QtWidgets, QtCore
+    print('radial_menu: Using PySide2')
 import sys
 from functools import partial
 from grm.radialmenu import RadialMenu, RadialMenuItem
