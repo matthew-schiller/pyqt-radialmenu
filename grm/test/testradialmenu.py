@@ -1,5 +1,5 @@
 try:
-    from Qt import QtWidgets
+    from Qt import QtWidgets, QtCore
 except:
     from PySide2 import QtWidgets, QtCore
 import sys
