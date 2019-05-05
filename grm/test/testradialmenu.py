@@ -79,11 +79,14 @@ class TestRadialMenuWindow(QtWidgets.QMainWindow):
         item.setText('I am in a column')
         self.radial_menu.add_item(item)
 
+        column_widgets = list()
         for itemText in ['itemA', 'itemB', 'itemC', 'itemD', 'itemF']:
             item = RadialMenuItem(position=None)
             item.setText(itemText)
             item.connect(partial(self.temp_print, itemText, item))
             self.radial_menu.add_item(item)
+            column_widgets.append(item)
+        column_widgets[3].setCheckable(True)
 
     @staticmethod
     def temp_print(print_stuff, widget):
