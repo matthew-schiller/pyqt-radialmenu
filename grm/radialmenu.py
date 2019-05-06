@@ -21,7 +21,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
                     item will display in the column menu.
     '''
 
-    def __init__(self, position=None, text=None):
+    def __init__(self, position=None, text=None, invertHighlightTextColor=False):
         QtWidgets.QPushButton.__init__(self)
         self.position = position
         self.screen_ratio = get_screen_ratio()
@@ -34,6 +34,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
         # Use current highlight and light color
         highlight = self.palette().highlight().color().getRgb()
         bgcolor = self.palette().color(QtGui.QPalette.Background).name()
+        self.h_text_color = self.palette().color(QtGui.QPalette.Text).getRgb()
         self.column_padding = 60 * self.screen_ratio
         if self.screen_ratio < 1.0:
             border = 1.0
@@ -42,31 +43,41 @@ class RadialMenuItem(QtWidgets.QPushButton):
         if position:
             style = """RadialMenuItem:hover{{
                             background-color:rgb({hr},{hg},{hb});
-                            border: {border}px solid black
+                            border: {border}px solid black;
+                            font: bold
                         }}
                         RadialMenuItem{{
-                            background-color:rgb({cr},{cg},{cb});
-                            border: {border}px solid black 
+                            background-color:{bg};
+                            border: {border}px solid black;
                         }}
                     """.format(hr=highlight[0], hg=highlight[1], hb=highlight[2],
-                               cr=bgcolor[0], cg=bgcolor[1], cb=bgcolor[2],
+                               bg=bgcolor,
                                border=border)
         else:
             style = """RadialMenuItem:hover{{
-                            background-color:rgb({},{},{});
+                            background-color:rgb({hr},{hg},{hb});
+                            border: {border}px solid black;
+                            font: bold;
                         }}
                         RadialMenuItem{{
-                            background-color:rgb({},{},{});
+                            background-color:{bg};
                             Text-align:left;
-                            padding-left: {}px
+                            padding-left: {pad}px
                         }}
-                    """.format(highlight[0], highlight[1], highlight[2],
-                               bgcolor[0], bgcolor[1], bgcolor[2],
-                               self.column_padding)
-        self.setStyleSheet(style)
+                    """.format(hr=highlight[0], hg=highlight[1], hb=highlight[2],
+                               bg=bgcolor,
+                               border=border,
+                               pad=self.column_padding)
+
+        self.style = style
+
+        # Invert highlight color
+        if invertHighlightTextColor:
+            self.invertHighlightTextColor()
+
+        self.setStyleSheet(self.style)
         self.checkBox = None
         self.function = None
-        self.clearMask()
 
     def connect(self, connect_function):
         self.function = connect_function
@@ -94,6 +105,14 @@ class RadialMenuItem(QtWidgets.QPushButton):
             if self.checkBox:
                 self.checkBox.hide()
 
+    def invertHighlightTextColor(self):
+        self.h_text_color = (255 - self.h_text_color[0], 255 - self.h_text_color[1], 255 - self.h_text_color[2])
+
+        self.style += """RadialMenuItem:hover{{
+                        color:rgb({text_r}, {text_g}, {text_b})
+                    }}
+                """.format(text_r=self.h_text_color[0], text_g=self.h_text_color[1], text_b=self.h_text_color[2])
+        self.setStyleSheet(self.style)
 
 class RadialMenu(QtWidgets.QMenu):
     """
