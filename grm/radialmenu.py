@@ -33,7 +33,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
 
         # Use current highlight and light color
         highlight = self.palette().highlight().color().getRgb()
-        bgcolor = self.palette().light().color().getRgb()
+        bgcolor = self.palette().color(QtGui.QPalette.Background).name()
         self.column_padding = 60 * self.screen_ratio
         if self.screen_ratio < 1.0:
             border = 1.0
@@ -66,6 +66,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
         self.setStyleSheet(style)
         self.checkBox = None
         self.function = None
+        self.clearMask()
 
     def connect(self, connect_function):
         self.function = connect_function
@@ -175,6 +176,8 @@ class RadialMenu(QtWidgets.QMenu):
         self.painterMask = QtGui.QPainter()
         self.maskPixmap = QtGui.QPixmap(self.width, self.height)
         self.maskPixmap.fill(QtCore.Qt.white)
+        # Track if mask has been set
+        self.isMaskSet = False
         # Radius of origin circle
         self.originRadius = 8.0 * self.screen_ratio
         # Right click widget - Stores the mouse press event of the widget 
@@ -242,8 +245,6 @@ class RadialMenu(QtWidgets.QMenu):
             self.add_column_item(item=item)
 
         self.painterMask.end()
-        if not self.transparent:
-            self.setMask(self.maskPixmap.createMaskFromColor(QtCore.Qt.white))
 
     def add_radial_item(self, item=None):
         """
@@ -416,10 +417,6 @@ class RadialMenu(QtWidgets.QMenu):
         self.painterMask.drawEllipse(x, y, w, h)
         self.painterMask.end()
 
-        # Apply mask
-        if not self.transparent:
-            self.setMask(self.maskPixmap.createMaskFromColor(QtCore.Qt.white))
-
     def paintEvent(self, event):
         """
         Main paint event that handles the orginn circle and the line 
@@ -563,6 +560,13 @@ class RadialMenu(QtWidgets.QMenu):
         self.menuRect = QtCore.QRect(x, y, self.width, self.height)
         self.setGeometry(self.menuRect)
         self.show()
+
+        # Apply mask, some apps may have overriden the QMenu class with mask
+        # To override this we are setting the mask at popup time
+        if not self.transparent and not self.isMaskSet:
+            self.setMask(self.maskPixmap.createMaskFromColor(QtCore.Qt.white))
+            self.isMaskSet = True
+
         self.timer_start()
 
     def right_click_popup(self, event):
