@@ -49,6 +49,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
                         RadialMenuItem{{
                             background-color:{bg};
                             border: {border}px solid black;
+                            font: bold
                         }}
                     """.format(hr=highlight[0], hg=highlight[1], hb=highlight[2],
                                bg=bgcolor,
@@ -56,11 +57,10 @@ class RadialMenuItem(QtWidgets.QPushButton):
         else:
             style = """RadialMenuItem:hover{{
                             background-color:rgb({hr},{hg},{hb});
-                            border: {border}px solid black;
-                            font: bold;
                         }}
                         RadialMenuItem{{
                             background-color:{bg};
+                            border: {border}px {bg};
                             Text-align:left;
                             padding-left: {pad}px
                         }}

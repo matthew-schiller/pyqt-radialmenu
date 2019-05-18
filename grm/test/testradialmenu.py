@@ -9,8 +9,7 @@ from functools import partial
 from grm.radialmenu import RadialMenu, RadialMenuItem
 
 
-
-class TestRadialMenuWindow(QtWidgets.QMainWindow):
+class TestWindow(QtWidgets.QMainWindow):
     """
     QMainWindow class for testing radial menus when added
     to widgets
@@ -19,7 +18,7 @@ class TestRadialMenuWindow(QtWidgets.QMainWindow):
     """
 
     def __init__(self):
-        super(TestRadialMenuWindow, self).__init__()
+        super(TestWindow, self).__init__()
 
         ########################################################
         # Build a list widget
@@ -35,6 +34,7 @@ class TestRadialMenuWindow(QtWidgets.QMainWindow):
         self.verticalLayout.addWidget(self.label)
 
         self.targetList = QtWidgets.QListWidget(self.centralWidget)
+        self.targetList.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         for item_name in ['A', 'B', 'C', 'D']:
             item = QtWidgets.QListWidgetItem(self.targetList)
             item.setText('Test Item {}'.format(item_name))
@@ -42,75 +42,82 @@ class TestRadialMenuWindow(QtWidgets.QMainWindow):
         self.verticalLayout.addWidget(self.targetList)
         self.setCentralWidget(self.centralWidget)
 
-        ########################################################
-        # Add Radial Menu
-        ########################################################
-        items = {'N': 'North',
-                 'S': 'South',
-                 'E': 'East',
-                 # 'W': 'West',
-                 'NE': 'NorthEast',
-                 'NW': 'NorthWest',
-                 'SE': 'SouthEast',
-                 'SW': 'SouthWest'}
 
-        self.radial_menu = RadialMenu()
-        item_widgets = list()
-        for pos in items:
-            item = RadialMenuItem(position=pos)
-            item.setText(items[pos])
-            self.radial_menu.add_item(item)
-            item_widgets.append(item)
-            item.connect(partial(self.temp_print, pos, item))
-        # Make some items checkable
-        item_widgets[0].setCheckable(True)
-        item_widgets[1].setCheckable(True)
+def build_menu():
+    """
+    Builds an example menu with items populated.
+    :return: Radial Menu Object
+    """
+    items = {'N': 'North',
+             'S': 'South',
+             'E': 'East',
+             # 'W': 'West',
+             'NE': 'NorthEast',
+             'NW': 'NorthWest',
+             'SE': 'SouthEast',
+             'SW': 'SouthWest'}
 
-        # Build menu
-        item = RadialMenuItem(position='W')
-        item.setText('WESTSIDE!')
-        self.radial_menu.add_item(item)
+    radial_menu = RadialMenu()
+    item_widgets = list()
+    for pos in items:
+        item = RadialMenuItem(position=pos)
+        item.setText(items[pos])
+        radial_menu.add_item(item)
+        item_widgets.append(item)
+        item.connect(partial(temp_print, pos, item))
 
-        # Use right click
-        # self.pieQMenu.rightClickConnect(ui.targetList)
-        # Use left click
-        self.radial_menu.left_click_connect(self.targetList)
+    # Make some items checkable
+    item_widgets[0].setCheckable(True)
+    item_widgets[1].setCheckable(True)
 
-        # Test column menu
+    # Build menu
+    item = RadialMenuItem(position='W')
+    item.setText('WESTSIDE!')
+    radial_menu.add_item(item)
+
+    # Test column menu
+    item = RadialMenuItem(position=None)
+    item.setText('I am in a column')
+    radial_menu.add_item(item)
+
+    column_widgets = list()
+    for itemText in ['itemA', 'itemB', 'itemC', 'itemD', 'itemF']:
         item = RadialMenuItem(position=None)
-        item.setText('I am in a column')
-        self.radial_menu.add_item(item)
+        item.setText(itemText)
+        item.connect(partial(temp_print, itemText, item))
+        radial_menu.add_item(item)
+        column_widgets.append(item)
+    column_widgets[3].setCheckable(True)
 
-        column_widgets = list()
-        for itemText in ['itemA', 'itemB', 'itemC', 'itemD', 'itemF']:
-            item = RadialMenuItem(position=None)
-            item.setText(itemText)
-            item.connect(partial(self.temp_print, itemText, item))
-            self.radial_menu.add_item(item)
-            column_widgets.append(item)
-        column_widgets[3].setCheckable(True)
-
-    @staticmethod
-    def temp_print(print_stuff, widget):
-        print(print_stuff)
-        if widget.checkBox:
-            widget.checkBox.setChecked(not(widget.checkBox.checkState()))
+    return radial_menu
 
 
+def temp_print(print_stuff, widget):
+    print(print_stuff)
+    if widget.checkBox:
+        widget.checkBox.setChecked(not(widget.checkBox.checkState()))
 
 
-activeWindow = QtWidgets.QApplication.activeWindow()
+def test():
+    active_window = QtWidgets.QApplication.activeWindow()
+    if active_window:
+        window = TestWindow()
+        menu = build_menu()
+        window.setParent(active_window)
+        menu.left_click_connect(window.targetList)
+        window.setWindowFlags(QtCore.Qt.Window)
 
-if activeWindow:
-    title = activeWindow.windowTitle()
-    window = TestRadialMenuWindow()
-    window.setParent(activeWindow)
-    window.setWindowFlags(QtCore.Qt.Window)
-    window.show()
-if not activeWindow:
-    app = QtWidgets.QApplication(sys.argv)
-    window = TestRadialMenuWindow()
-    window.show()
-    sys.exit(app.exec_())
+        window.show()
+    if not active_window:
+        app = QtWidgets.QApplication(sys.argv)
+        window = TestWindow()
+        menu = build_menu()
+        menu.left_click_connect(window.targetList)
+        #window.targetList.customContextMenuRequested.connect(menu.popup)
+        window.setParent(active_window)
+        window.show()
+        sys.exit(app.exec_())
 
+
+test()
 
