@@ -656,7 +656,6 @@ class RadialMenu(QtWidgets.QMenu):
         self.last_cursor_position = pos
         self.last_time = current_time
 
-
     @staticmethod
     def test_system_transparent_support():
         '''
@@ -675,7 +674,6 @@ class RadialMenu(QtWidgets.QMenu):
             pass
 
         return True
-
 
     @staticmethod
     def angle_from_points(p1=None, p2=None):
