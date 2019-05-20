@@ -161,11 +161,13 @@ class RadialMenu(QtWidgets.QMenu):
         """
         QtWidgets.QMenu.__init__(self)
 
-        # Transparent is set to false because windows managers with no transparency
-        #             do not work with transparency
-        self.transparent = False
-        # Draw cursor line - If true a line is draw from the center to the cursor
-        self.draw_cursor_line = False
+        # Transparency is set to false on some linux systems that do not support it.
+        #             A mask will be used if transparency is not supported
+        self.transparent = self.test_system_transparent_support()
+        # Draw cursor line - If true a line is drawn from the center to the cursor
+        self.draw_cursor_line = True
+        # Erase cursor line - Controls when the cursor line is painted.
+        self.erase_cursor_line = False
 
         # Window settings
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint | QtCore.Qt.NoDropShadowWindowHint)
@@ -201,7 +203,7 @@ class RadialMenu(QtWidgets.QMenu):
         self.originRadius = 8.0 * self.screen_ratio
         # Right click widget - Stores the mouse press event of the widget 
         #                      the menu is opened from when right clicked
-        self.rightClickWidgetMousePressEvent = None
+        self.right_click_widget_mouse_press_event = None
         # Stores which item is active
         self.activeItem = None
         # Pens
@@ -449,9 +451,10 @@ class RadialMenu(QtWidgets.QMenu):
             menu_center_pos = QtCore.QPoint(self.width*.5, self.height*.5)
 
             # Cursor line
-            if self.draw_cursor_line:
-                self.painter.setPen(self.penCursorLine)
-                self.painter.drawLine(menu_center_pos, cursor_pos)
+            if not self.erase_cursor_line:
+                if self.draw_cursor_line:
+                    self.painter.setPen(self.penCursorLine)
+                    self.painter.drawLine(menu_center_pos, cursor_pos)
             # Origin circle - black outline
             offset = 2
             self.painter.setPen(self.penOrigin)
@@ -476,17 +479,17 @@ class RadialMenu(QtWidgets.QMenu):
     def updateWidget(self):
         self.livePos = QtGui.QCursor.pos()
         # Calculate how far has the mouse moved from origin
-        length = math.hypot(self.startPos.x() - self.livePos.x(), 
-                            self.startPos.y() - self.livePos.y())
+        length = math.hypot(self.start_pos.x() - self.livePos.x(),
+                            self.start_pos.y() - self.livePos.y())
         # Calculate angle of current cursor position to origin
-        angle = self.angleFromPoints([self.startPos.x(), self.startPos.y()],
-                                     [self.livePos.x(),  self.livePos.y()])
+        angle = self.angle_from_points([self.start_pos.x(), self.start_pos.y()],
+                                       [self.livePos.x(),  self.livePos.y()])
             
         # Item locations are broken into two 22.5 degree slices
         rad_slice = int(angle/22.5)
         ############################################################################
         # Highlight items - Highlighting is managed by sending leave and enter 
-        #                   events to the items instead of explicingly setting the 
+        #                   events to the items instead of explicitly setting the
         #                   color.
         ############################################################################
         # Stores what item the user has chosen
@@ -509,8 +512,9 @@ class RadialMenu(QtWidgets.QMenu):
                         rect = self.column_widget.rects[i]
                         if rect.contains(cursor_pos):
                             self.activeItem = self.column_widget.items[i]
+                            self.erase_cursor_line = True
                             break
-            # Radial items check 
+            # Radial items check
             if not self.activeItem:
                 for item in self.items:
                     position = item.position
@@ -522,10 +526,12 @@ class RadialMenu(QtWidgets.QMenu):
                     # Radial rectangle check
                     if rect.contains(cursor_pos):
                         self.activeItem = item
+                        self.erase_cursor_line = False
                         break
                     # Slice check
                     if rad_slice in item.slices:
                         self.activeItem = item
+                        self.erase_cursor_line = False
         if self.activeItem:
             QtCore.QCoreApplication.sendEvent(self.activeItem, self.enterButtonEvent)
         # Call paint event
@@ -533,8 +539,16 @@ class RadialMenu(QtWidgets.QMenu):
 
     def mouseReleaseEvent(self, event):
         QtWidgets.QMenu.mouseReleaseEvent(self, event)
+
+        # Turn off button hover events
         for item in self.items:
             QtCore.QCoreApplication.sendEvent(item, self.leaveButtonEvent)
+
+        # Repaint with out the cursor line or it will flash the next
+        # time the menu is shown
+        self.erase_cursor_line = True
+        self.repaint()
+
         self.hide()
 
         # Run items function if it exists
@@ -549,35 +563,25 @@ class RadialMenu(QtWidgets.QMenu):
         self.activeItem = None
         self.column_widget.setEnabled(False)
         self.timer.stop()
+        self.erase_cursor_line = False
 
     def timer_start(self):
         self.gesture = True
         self.startTime = timeit.default_timer()
 
-        self.lastCursorPosition = None
-        self.lastTime= None
+        self.last_cursor_position = None
+        self.last_time= None
 
-        self.cursorChange = list()
-        self.timeChange = list()
+        self.cursor_change = list()
+        self.time_change = list()
         self.timer.start()
 
-    def angleFromPoints(self, p1=None, p2=None):
-        """
-        +X axis to the right is 0 Degrees
-        +Y axis up is 90 degrees
-        """
-        radians = math.atan2(p2[1]-p1[1], p2[0]-p1[0])
-        degrees = math.degrees(radians)
-        if degrees < 0.0:
-            degrees += 360.0
-        return degrees
-
     def popup(self, pos=None):
-        self.startPos = pos
+        self.start_pos = pos
         x = (pos.x()+(self.width*.5))-self.width 
         y = (pos.y()+(self.height*.5))-self.height 
-        self.menuRect = QtCore.QRect(x, y, self.width, self.height)
-        self.setGeometry(self.menuRect)
+        self.menu_rect = QtCore.QRect(x, y, self.width, self.height)
+        self.setGeometry(self.menu_rect)
         self.show()
 
         # Apply mask, some apps may have overriden the QMenu class with mask
@@ -590,24 +594,24 @@ class RadialMenu(QtWidgets.QMenu):
 
     def right_click_popup(self, event):
         if event.buttons() != QtCore.Qt.RightButton:
-            self.rightClickWidgetMousePressEvent(event)
+            self.right_click_widget_mouse_press_event(event)
             return()
         pos = QtGui.QCursor.pos()
         self.popup(pos)
 
     def right_click_connect(self, widget=None):
-        self.rightClickWidgetMousePressEvent = widget.mousePressEvent
+        self.right_click_widget_mouse_press_event = widget.mousePressEvent
         widget.mousePressEvent = self.right_click_popup
 
     def left_click_popup(self, event):
         if event.buttons() != QtCore.Qt.LeftButton:
-            self.leftClickWidgetMousePressEvent(event)
+            self.left_click_widget_mouse_press_event(event)
             return()
         pos = QtGui.QCursor.pos()
         self.popup(pos)
 
     def left_click_connect(self, widget=None):
-        self.leftClickWidgetMousePressEvent = widget.mousePressEvent
+        self.left_click_widget_mouse_press_event = widget.mousePressEvent
         widget.mousePressEvent = self.left_click_popup
 
     def track_cursor(self):
@@ -624,33 +628,66 @@ class RadialMenu(QtWidgets.QMenu):
         # When the cursor speed is below this value turn gesture mode off
         cursor_speed_tolerance = .02
 
-        if self.lastCursorPosition and self.gesture:
-            time_change = current_time - self.lastTime
-            change = math.hypot(self.lastCursorPosition.x() - pos.x(), 
-                                self.lastCursorPosition.y() - pos.y())
-            if len(self.cursorChange) < samples:
-                self.cursorChange.append(change)
-                self.timeChange.append(time_change)
+        if self.last_cursor_position and self.gesture:
+            time_change = current_time - self.last_time
+            change = math.hypot(self.last_cursor_position.x() - pos.x(),
+                                self.last_cursor_position.y() - pos.y())
+            if len(self.cursor_change) < samples:
+                self.cursor_change.append(change)
+                self.time_change.append(time_change)
             else:
                 for i in xrange(samples-1):
-                    self.cursorChange[i] = self.cursorChange[i+1]
-                    self.timeChange[i] = self.timeChange[i+1]
-                self.cursorChange[samples-1] = change
-                self.timeChange[samples-1] = time_change
+                    self.cursor_change[i] = self.cursor_change[i + 1]
+                    self.time_change[i] = self.time_change[i + 1]
+                self.cursor_change[samples - 1] = change
+                self.time_change[samples - 1] = time_change
 
-            cursor_speed = self.mean(self.cursorChange)
+            cursor_speed = self.mean(self.cursor_change)
             # If the cursor speed is less than .01 pixels
             # when averaged over the number of samples then
             # Turn of gesture mode and allow all column items 
             # to be selected
-            if len(self.cursorChange) > samples-1:
+            if len(self.cursor_change) > samples-1:
                 if cursor_speed < cursor_speed_tolerance:
                     self.gesture = False
                     self.updateWidget()
                     self.timer.stop()
 
-        self.lastCursorPosition = pos
-        self.lastTime = current_time
+        self.last_cursor_position = pos
+        self.last_time = current_time
+
+
+    @staticmethod
+    def test_system_transparent_support():
+        try:
+            from Qt import QX11Info
+            if QX11Info.isPlatformX11():
+                if not QX11Info.isCompositingManagerRunning(0):
+                    return False
+        except:
+            pass
+        try:
+            from PySide2 import QX11Info
+            if QX11Info.isPlatformX11():
+                if not QX11Info.isCompositingManagerRunning(0):
+                    return False
+        except:
+            pass
+
+        return True
+
+
+    @staticmethod
+    def angle_from_points(p1=None, p2=None):
+        """
+        +X axis to the right is 0 Degrees
+        +Y axis up is 90 degrees
+        """
+        radians = math.atan2(p2[1]-p1[1], p2[0]-p1[0])
+        degrees = math.degrees(radians)
+        if degrees < 0.0:
+            degrees += 360.0
+        return degrees
 
     @staticmethod
     def pie_next(value, pie_max=15):
