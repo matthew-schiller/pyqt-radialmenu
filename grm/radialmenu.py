@@ -659,18 +659,18 @@ class RadialMenu(QtWidgets.QMenu):
 
     @staticmethod
     def test_system_transparent_support():
+        '''
+        If the environments python qt has built the QtX11Extras class, assume we are on a 
+        linux machine that does not support compositing. 
+        '''
         try:
-            from Qt import QX11Info
-            if QX11Info.isPlatformX11():
-                if not QX11Info.isCompositingManagerRunning(0):
-                    return False
+            from Qt import QtX11Extras
+            return False
         except:
             pass
         try:
-            from PySide2 import QX11Info
-            if QX11Info.isPlatformX11():
-                if not QX11Info.isCompositingManagerRunning(0):
-                    return False
+            from PySide2 import QtX11Extras
+            return False
         except:
             pass
 
