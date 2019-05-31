@@ -7,6 +7,41 @@ try:
 except:
     from PySide2 import QtWidgets, QtGui, QtCore
 
+"""
+    Integrating the menu  - There are a number of ways to integrate the menu
+                            into your widgets.
+                            
+        (a) eventFilter  - Install mouse press event for apps where we need
+                           to engage a filter so we can capture mouse press events
+                           without sub-classing the widgets
+                            
+                   Steps  - * Build a RadialMenu at startup of app and store as variable
+                            * RadialMenu.start() should be method is bound to a press event
+                              in your widget.
+                            * RadialMenu.end() method is bound to a release event in your widget.
+                            * RadialMenu.start() installs an event filter on the 
+                              QtWidgets.QApplication.instance() to globally 
+                              capture mouse press events. If a widget is passed, it will be 
+                              installed on that widget.
+                            * Event filter waits for a mouseButton press event
+                            * Event filter runs RadialMenu.show method on mouse press event
+                            * The bound release event should run RadialMenu.stop() to remove
+                              the filter.
+
+TODO:
+     In Progress:
+        - Event filter needs to check for right click mouse press
+        
+     Backlog:
+        - Try to use actual action classes for adding column style menu's
+        - Need radio style action items
+        - Sub radial menus
+        - Styles * Organize data structure so there can be 
+                   different look styles applied to the menu
+     Complete:
+        - Mouse release method needs to repaint the checkbox if it exists
+"""
+
 
 class RadialMenuItem(QtWidgets.QPushButton):
     '''
@@ -73,7 +108,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
 
         # Invert highlight color
         if invertHighlightTextColor:
-            self.invertHighlightTextColor()
+            self.invert_highlight_text_color()
 
         self.setStyleSheet(self.style)
         self.checkBox = None
@@ -105,7 +140,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
             if self.checkBox:
                 self.checkBox.hide()
 
-    def invertHighlightTextColor(self):
+    def invert_highlight_text_color(self):
         self.h_text_color = (255 - self.h_text_color[0], 255 - self.h_text_color[1], 255 - self.h_text_color[2])
 
         self.style += """RadialMenuItem:hover{{
@@ -113,6 +148,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
                     }}
                 """.format(text_r=self.h_text_color[0], text_g=self.h_text_color[1], text_b=self.h_text_color[2])
         self.setStyleSheet(self.style)
+
 
 class RadialMenu(QtWidgets.QMenu):
     """
@@ -130,7 +166,7 @@ class RadialMenu(QtWidgets.QMenu):
 
                    cursor(x,y)-->angle-->slice-->position-->item
 
-                   A position is assocaited with two slices so its slices
+                   A position is associated with two slices so its slices
                    can be given to its neighboring positions when the 
                    position is not in use (No item has mapped it). 
                    
@@ -168,6 +204,8 @@ class RadialMenu(QtWidgets.QMenu):
         self.draw_cursor_line = True
         # Erase cursor line - Controls when the cursor line is painted.
         self.erase_cursor_line = False
+        # Filter used when the qApp's mouse press event is needed to show the menu
+        self.mousePressFilter = None
 
         # Window settings
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint | QtCore.Qt.NoDropShadowWindowHint)
@@ -256,7 +294,17 @@ class RadialMenu(QtWidgets.QMenu):
         self.column_widget_rect = None
         self.paint_mask()
 
-    def add_item(self, item=None, text=None):
+    def start(self):
+        q_app = QtWidgets.QApplication.instance()
+        self.mousePressFilter = MousePressFilter()
+        self.mousePressFilter.set_menu(self)
+        q_app.installEventFilter(self.mousePressFilter)
+
+    def stop(self):
+        q_app = QtWidgets.QApplication.instance()
+        q_app.removeEventFilter(self.mousePressFilter)
+
+    def add_item(self, item=None):
         self.items.append(item)
         self.painterMask.begin(self.maskPixmap)
 
@@ -441,7 +489,7 @@ class RadialMenu(QtWidgets.QMenu):
     def paintEvent(self, event):
         """
         Main paint event that handles the orginn circle and the line 
-        from the origin to the moust direction.
+        from the origin to the mouse direction.
         """
         try:
             # init painter - QPainting on self does not work outside this method
@@ -474,9 +522,9 @@ class RadialMenu(QtWidgets.QMenu):
 
     def mouseMoveEvent(self, event):
         QtWidgets.QMenu.mouseMoveEvent(self, event)
-        self.updateWidget()
+        self.update_widget()
 
-    def updateWidget(self):
+    def update_widget(self):
         self.livePos = QtGui.QCursor.pos()
         # Calculate how far has the mouse moved from origin
         length = math.hypot(self.start_pos.x() - self.livePos.x(),
@@ -538,11 +586,11 @@ class RadialMenu(QtWidgets.QMenu):
         self.update()
 
     def mouseReleaseEvent(self, event):
-        QtWidgets.QMenu.mouseReleaseEvent(self, event)
-
         # Turn off button hover events
         for item in self.items:
             QtCore.QCoreApplication.sendEvent(item, self.leaveButtonEvent)
+            if item.checkBox:
+                item.checkBox.repaint()
 
         # Repaint with out the cursor line or it will flash the next
         # time the menu is shown
@@ -564,6 +612,9 @@ class RadialMenu(QtWidgets.QMenu):
         self.column_widget.setEnabled(False)
         self.timer.stop()
         self.erase_cursor_line = False
+
+        # Process standard event
+        QtWidgets.QMenu.mouseReleaseEvent(self, event)
 
     def timer_start(self):
         self.gesture = True
@@ -650,7 +701,7 @@ class RadialMenu(QtWidgets.QMenu):
             if len(self.cursor_change) > samples-1:
                 if cursor_speed < cursor_speed_tolerance:
                     self.gesture = False
-                    self.updateWidget()
+                    self.update_widget()
                     self.timer.stop()
 
         self.last_cursor_position = pos
@@ -712,8 +763,7 @@ def get_screen_ratio():
     """
     Find the logical dots per inch for the screens and calc
     a ratio from a fixed reference dpi.
-
-    :return:
+    :return: Screen ratio
     """
     ref_dpi = 192.0
 
@@ -725,4 +775,70 @@ def get_screen_ratio():
     else:
         return 1
 
+
+class MousePressFilter(QtCore.QObject):
+    '''
+    Event filter object for use when an event like a key press
+    is needed to initiate a state of waiting for a button
+    press to show the menu. This method is for cases where the
+    widgets can not be easily sub-classed to do the same functionality.
+    '''
+    def __init__(self):
+        QtCore.QObject.__init__(self)
+        self.menu = None
+        self.mouse_button = QtCore.Qt.RightButton
+
+    def set_menu(self, menu):
+        '''
+        Specifies which menu the even filter should popup.
+        :param menu: Menu widget to popup
+        :return:
+        '''
+        self.menu = menu
+
+    def set_mouse_button(self, button):
+        '''
+        Specifies which mouse button the event filter should look for.
+        :param button: [QtCore.Qt.LeftButton, QtCore.Qt.MiddleButton, QtCore.Qt.RightButton]
+                       defaults to right button.
+        '''
+        self.mouse_button = button
+
+    def eventFilter(self, obj, event):
+        '''
+        Standard event filter installed on the qApp.
+        :param obj:
+        :param event:
+        :return:
+        '''
+        if event.type() == QtCore.QEvent.MouseButtonPress:
+            # Show menu
+            if event.buttons() == self.mouse_button:
+                if not self.menu.isVisible():
+                    self.menu.popup(QtGui.QCursor.pos())
+            return QtCore.QObject.eventFilter(self, obj, event)
+        else:
+            # standard event processing
+            return QtCore.QObject.eventFilter(self, obj, event)
+
+class GrmMenu(QtWidgets.QMenu):
+    def __init__(self, items=None):
+        """
+        QMenu with more options for how the actions are drawn.
+        setWidth
+        """
+        QtWidgets.QMenu.__init__(self)
+        self.menu_rect = None
+
+    def pressMe(self, event):
+        pos = QtGui.QCursor.pos()
+        self.popup(pos)
+        self.menu_rect = QtCore.QRect(pos.x()-150, pos.y()+20, self.width(), self.height()-40)
+        self.setGeometry(self.menu_rect)
+
+    def mouseReleaseEvent(self, event):
+        # Turn off button hover events
+        self.hide()
+        # Process standard event
+        QtWidgets.QMenu.mouseReleaseEvent(self, event)
 
