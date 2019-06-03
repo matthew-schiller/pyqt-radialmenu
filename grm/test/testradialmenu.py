@@ -6,7 +6,7 @@ except:
     print('radial_menu: Using PySide2')
 import sys
 from functools import partial
-from grm.radialmenu import RadialMenu, RadialMenuAction, RadialMenuItem
+from grm.radialmenu import RadialMenu, GrmMenu, RadialMenuItem
 
 
 class TestWindow(QtWidgets.QMainWindow):
@@ -62,7 +62,7 @@ def build_menu():
     for pos in items:
         item = RadialMenuItem(position=pos)
         item.setText(items[pos])
-        radial_menu.add_item(item)
+        radial_menu.addItem(item)
         item_widgets.append(item)
         item.connect(partial(temp_print, pos, item))
 
@@ -73,19 +73,19 @@ def build_menu():
     # Build menu
     item = RadialMenuItem(position='W')
     item.setText('WESTSIDE!')
-    radial_menu.add_item(item)
+    radial_menu.addItem(item)
 
     # Test column menu
     item = RadialMenuItem(position=None)
     item.setText('I am in a column')
-    radial_menu.add_item(item)
+    radial_menu.addItem(item)
 
     column_widgets = list()
     for itemText in ['itemA', 'itemB', 'itemC', 'itemD', 'itemF']:
         item = RadialMenuItem(position=None)
         item.setText(itemText)
         item.connect(partial(temp_print, itemText, item))
-        radial_menu.add_item(item)
+        radial_menu.addItem(item)
         column_widgets.append(item)
     column_widgets[3].setCheckable(True)
 
@@ -105,7 +105,7 @@ def testMousePress():
         menu = build_menu()
         window.setParent(active_window)
 
-        menu.left_click_connect(window.targetList)
+        menu.leftClickConnect(window.targetList)
 
         window.setWindowFlags(QtCore.Qt.Window)
 
@@ -115,7 +115,7 @@ def testMousePress():
         window = TestWindow()
         menu = build_menu()
 
-        menu.left_click_connect(window.targetList)
+        menu.leftClickConnect(window.targetList)
 
         window.setParent(active_window)
         window.show()
@@ -200,7 +200,7 @@ def testActionsRadial():
         for pos in items:
             item = RadialMenuItem(position=pos)
             item.setText(items[pos])
-            radial_menu.add_item(item)
+            radial_menu.addItem(item)
             item_widgets.append(item)
             item.connect(partial(temp_print, pos, item))
 
@@ -227,10 +227,10 @@ def testActionsRadial():
         #window.targetList.mousePressEvent = partial(menu.popup(QtGui.QCursor.pos()))
         #window.targetList.mousePressEvent = column_menu.pressMe
 
-        radial_menu.left_click_connect(window.targetList)
+        radial_menu.leftClickConnect(window.targetList)
 
         window.setParent(active_window)
         window.show()
         sys.exit(app.exec_())
 
-#testMouseFilter()
+testMousePress()

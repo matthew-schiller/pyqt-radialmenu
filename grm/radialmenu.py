@@ -8,13 +8,54 @@ except:
     from PySide2 import QtWidgets, QtGui, QtCore
 
 """
+TODO:
+     In Progress:
+        - spec out using actions
+        
+     Backlog:
+        - Try to use actual action classes for adding column style menu's
+        - Test creating action groups to be used like radio buttons
+        - Sub radial menus
+        - Styles * Organize data structure so there can be 
+                   different look styles applied to the menu
+                   
+     Complete:
+        - Speed tracking of mouse movement needs to be factored by the LDP
+              The cursor_speed_tolerance is now multiplied by the screen_ratio 
+ 
+     Action Structure
+         The main organizational issue is that the specialized sub menus (radial, box)
+         need to be drawn in a special way outside the management of a QMenu. They could
+         be QWidgetActions. 
+         GrmMenu
+             Class for the general menu
+ 
+             methods
+                 addGrmMenu   - Creates a GrmMenu. Will take a position argument for the 
+                                floating position of the menu.
+                 grmMenus     - List of sub GrmMenus 
+                 actionWidth  - Class attribute that determines the width of all the actions
+                 updateWidth  - If the actionWidth attribute is set, a special "Action Width 
+                                Action" is added with blank spaces to approximate the width. 
+                                The geometry is set to hide the "Action Width Action".
+                               
+             GrmRadialMenu -> Inherited from GrmMenu
+                 Class to manage interaction of the mouse and organize the child
+                 GrmMenu's into a radial configuration. 
+ 
+                 Methods
+                     addMenu - Creates a GrmMenu. Will take position argument for the 
+                     cardinal direction of the menu.
+
+ 
+USAGE:                   
     Integrating the menu  - There are a number of ways to integrate the menu
                             into your widgets.
-                            
+ 
         (a) eventFilter  - Install mouse press event for apps where we need
                            to engage a filter so we can capture mouse press events
                            without sub-classing the widgets
-                            
+ 
                    Steps  - * Build a RadialMenu at startup of app and store as variable
                             * RadialMenu.start() should be method is bound to a press event
                               in your widget.
@@ -28,18 +69,6 @@ except:
                             * The bound release event should run RadialMenu.stop() to remove
                               the filter.
 
-TODO:
-     In Progress:
-        - Event filter needs to check for right click mouse press
-        
-     Backlog:
-        - Try to use actual action classes for adding column style menu's
-        - Need radio style action items
-        - Sub radial menus
-        - Styles * Organize data structure so there can be 
-                   different look styles applied to the menu
-     Complete:
-        - Mouse release method needs to repaint the checkbox if it exists
 """
 
 
@@ -108,7 +137,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
 
         # Invert highlight color
         if invertHighlightTextColor:
-            self.invert_highlight_text_color()
+            self.invertHighlightTextColor()
 
         self.setStyleSheet(self.style)
         self.checkBox = None
@@ -140,7 +169,7 @@ class RadialMenuItem(QtWidgets.QPushButton):
             if self.checkBox:
                 self.checkBox.hide()
 
-    def invert_highlight_text_color(self):
+    def invertHighlightTextColor(self):
         self.h_text_color = (255 - self.h_text_color[0], 255 - self.h_text_color[1], 255 - self.h_text_color[2])
 
         self.style += """RadialMenuItem:hover{{
@@ -199,7 +228,7 @@ class RadialMenu(QtWidgets.QMenu):
 
         # Transparency is set to false on some linux systems that do not support it.
         #             A mask will be used if transparency is not supported
-        self.transparent = self.test_system_transparent_support()
+        self.transparent = self.testSystemTransparentSupport()
         # Draw cursor line - If true a line is drawn from the center to the cursor
         self.draw_cursor_line = True
         # Erase cursor line - Controls when the cursor line is painted.
@@ -223,7 +252,7 @@ class RadialMenu(QtWidgets.QMenu):
         # Timer for gestures
         self.timer = QtCore.QTimer()
         self.timer.setTimerType(QtCore.Qt.PreciseTimer)
-        self.timer.timeout.connect(self.track_cursor)
+        self.timer.timeout.connect(self.trackCursor)
         self.timer.setInterval(2)
 
         # Turns off when the cursor stops moving
@@ -292,36 +321,36 @@ class RadialMenu(QtWidgets.QMenu):
 
         # Draw radial menu and its mask
         self.column_widget_rect = None
-        self.paint_mask()
+        self.paintMask()
 
     def start(self):
         q_app = QtWidgets.QApplication.instance()
         self.mousePressFilter = MousePressFilter()
-        self.mousePressFilter.set_menu(self)
+        self.mousePressFilter.setMenu(self)
         q_app.installEventFilter(self.mousePressFilter)
 
     def stop(self):
         q_app = QtWidgets.QApplication.instance()
         q_app.removeEventFilter(self.mousePressFilter)
 
-    def add_item(self, item=None):
+    def addItem(self, item=None):
         self.items.append(item)
         self.painterMask.begin(self.maskPixmap)
 
         if item.position:
-            self.add_radial_item(item=item)
+            self.addRadialItem(item=item)
         else:
-            self.add_column_item(item=item)
+            self.addColumnItem(item=item)
 
         self.painterMask.end()
 
-    def add_radial_item(self, item=None):
+    def addRadialItem(self, item=None):
         """
         """
         r = self.screen_ratio
         item.setParent(self)
         # Calculate the width of the text
-        w, h = self.get_text_dimensions(item)
+        w, h = self.getTextDimensions(item)
         width = w + (110*r) 
         height = self.itemHeight
 
@@ -352,7 +381,7 @@ class RadialMenu(QtWidgets.QMenu):
         x += self.width*.5
         y += self.height*.5
         # slice 
-        self.update_slice_membership()
+        self.updateSliceMembership()
         # Define rect
         rect = QtCore.QRect(x, y, width, height)
         # Mask and draw
@@ -360,7 +389,7 @@ class RadialMenu(QtWidgets.QMenu):
         item.setGeometry(rect)
         item.p_rect = rect
 
-    def add_column_item(self, item=None):
+    def addColumnItem(self, item=None):
         """
         Add items with no position specified so they show up
         in the column below the radial menu items
@@ -383,7 +412,7 @@ class RadialMenu(QtWidgets.QMenu):
         for cur_item in self.items:
             if not cur_item.position:
                 column_items.append(cur_item)
-                width = (self.get_text_dimensions(cur_item)[0] +
+                width = (self.getTextDimensions(cur_item)[0] +
                          (cur_item.column_padding*2))
                 if width > greatest_width:
                     greatest_width = width
@@ -418,7 +447,7 @@ class RadialMenu(QtWidgets.QMenu):
         item.setGeometry(item.p_rect)
 
     @staticmethod
-    def get_text_dimensions(item):
+    def getTextDimensions(item):
         """
         Find the width and hieght of the text label of the item
         :param item:
@@ -430,7 +459,7 @@ class RadialMenu(QtWidgets.QMenu):
         height = metric.ascent() 
         return width, height
 
-    def update_slice_membership(self):
+    def updateSliceMembership(self):
         """
         Manage mapping pie slices to active positions
            This needs to be updated for all the slices
@@ -456,8 +485,8 @@ class RadialMenu(QtWidgets.QMenu):
         while len(slices_used) < 16:
             for item in self.items:
                 # Find surrounding slices from the current items slices
-                n = self.pie_last(item.slices[0])
-                l = self.pie_next(item.slices[-1])
+                n = self.pieLast(item.slices[0])
+                l = self.pieNext(item.slices[-1])
                 # If slices is not used add it to its own slices
                 if not n in slices_used:
                     item.slices.append(n)
@@ -466,7 +495,7 @@ class RadialMenu(QtWidgets.QMenu):
                     item.slices.append(l)
                     slices_used.append(l)
 
-    def paint_mask(self):
+    def paintMask(self):
         """
         Paint a mask for the items so it is transparent around them.
         """
@@ -522,16 +551,16 @@ class RadialMenu(QtWidgets.QMenu):
 
     def mouseMoveEvent(self, event):
         QtWidgets.QMenu.mouseMoveEvent(self, event)
-        self.update_widget()
+        self.updateWidget()
 
-    def update_widget(self):
+    def updateWidget(self):
         self.livePos = QtGui.QCursor.pos()
         # Calculate how far has the mouse moved from origin
         length = math.hypot(self.start_pos.x() - self.livePos.x(),
                             self.start_pos.y() - self.livePos.y())
         # Calculate angle of current cursor position to origin
-        angle = self.angle_from_points([self.start_pos.x(), self.start_pos.y()],
-                                       [self.livePos.x(),  self.livePos.y()])
+        angle = self.angleFromPoints([self.start_pos.x(), self.start_pos.y()],
+                                     [self.livePos.x(),  self.livePos.y()])
             
         # Item locations are broken into two 22.5 degree slices
         rad_slice = int(angle/22.5)
@@ -616,7 +645,7 @@ class RadialMenu(QtWidgets.QMenu):
         # Process standard event
         QtWidgets.QMenu.mouseReleaseEvent(self, event)
 
-    def timer_start(self):
+    def timerStart(self):
         self.gesture = True
         self.startTime = timeit.default_timer()
 
@@ -641,31 +670,31 @@ class RadialMenu(QtWidgets.QMenu):
             self.setMask(self.maskPixmap.createMaskFromColor(QtCore.Qt.white))
             self.isMaskSet = True
 
-        self.timer_start()
+        self.timerStart()
 
-    def right_click_popup(self, event):
+    def rightClickPopup(self, event):
         if event.buttons() != QtCore.Qt.RightButton:
             self.right_click_widget_mouse_press_event(event)
             return()
         pos = QtGui.QCursor.pos()
         self.popup(pos)
 
-    def right_click_connect(self, widget=None):
+    def rightClickConnect(self, widget=None):
         self.right_click_widget_mouse_press_event = widget.mousePressEvent
-        widget.mousePressEvent = self.right_click_popup
+        widget.mousePressEvent = self.rightClickPopup
 
-    def left_click_popup(self, event):
+    def leftClickPopup(self, event):
         if event.buttons() != QtCore.Qt.LeftButton:
             self.left_click_widget_mouse_press_event(event)
             return()
         pos = QtGui.QCursor.pos()
         self.popup(pos)
 
-    def left_click_connect(self, widget=None):
+    def leftClickConnect(self, widget=None):
         self.left_click_widget_mouse_press_event = widget.mousePressEvent
-        widget.mousePressEvent = self.left_click_popup
+        widget.mousePressEvent = self.leftClickPopup
 
-    def track_cursor(self):
+    def trackCursor(self):
         # Track cursor - When the mouse is first pressed start a timer (x).
         #                At each interval track how much the cursor has moved.
         #                If cursor speed is less then specified threshold
@@ -677,7 +706,7 @@ class RadialMenu(QtWidgets.QMenu):
         # Time samples before judging if we have left gesture mode
         samples = 40
         # When the cursor speed is below this value turn gesture mode off
-        cursor_speed_tolerance = .02
+        cursor_speed_tolerance = .02*self.screen_ratio
 
         if self.last_cursor_position and self.gesture:
             time_change = current_time - self.last_time
@@ -694,21 +723,21 @@ class RadialMenu(QtWidgets.QMenu):
                 self.time_change[samples - 1] = time_change
 
             cursor_speed = self.mean(self.cursor_change)
-            # If the cursor speed is less than .01 pixels
+            # If the cursor speed is less than cursor_speed_tolerance pixels
             # when averaged over the number of samples then
-            # Turn of gesture mode and allow all column items 
+            # Turn of gesture mode off and allow all column items
             # to be selected
             if len(self.cursor_change) > samples-1:
                 if cursor_speed < cursor_speed_tolerance:
                     self.gesture = False
-                    self.update_widget()
+                    self.updateWidget()
                     self.timer.stop()
 
         self.last_cursor_position = pos
         self.last_time = current_time
 
     @staticmethod
-    def test_system_transparent_support():
+    def testSystemTransparentSupport():
         '''
         If the environments python qt has built the QtX11Extras class, assume we are on a 
         linux machine that does not support compositing. 
@@ -727,7 +756,7 @@ class RadialMenu(QtWidgets.QMenu):
         return True
 
     @staticmethod
-    def angle_from_points(p1=None, p2=None):
+    def angleFromPoints(p1=None, p2=None):
         """
         +X axis to the right is 0 Degrees
         +Y axis up is 90 degrees
@@ -739,7 +768,7 @@ class RadialMenu(QtWidgets.QMenu):
         return degrees
 
     @staticmethod
-    def pie_next(value, pie_max=15):
+    def pieNext(value, pie_max=15):
         if value == pie_max:
             return 0
         else:
@@ -747,7 +776,7 @@ class RadialMenu(QtWidgets.QMenu):
             return value
 
     @staticmethod
-    def pie_last(value, pie_max=15):
+    def pieLast(value, pie_max=15):
         if value == 0:
             return pie_max
         else:
@@ -788,7 +817,7 @@ class MousePressFilter(QtCore.QObject):
         self.menu = None
         self.mouse_button = QtCore.Qt.RightButton
 
-    def set_menu(self, menu):
+    def setMenu(self, menu):
         '''
         Specifies which menu the even filter should popup.
         :param menu: Menu widget to popup
@@ -796,7 +825,7 @@ class MousePressFilter(QtCore.QObject):
         '''
         self.menu = menu
 
-    def set_mouse_button(self, button):
+    def setMouseButton(self, button):
         '''
         Specifies which mouse button the event filter should look for.
         :param button: [QtCore.Qt.LeftButton, QtCore.Qt.MiddleButton, QtCore.Qt.RightButton]
@@ -828,7 +857,17 @@ class GrmMenu(QtWidgets.QMenu):
         setWidth
         """
         QtWidgets.QMenu.__init__(self)
-        self.menu_rect = None
+        self.subGrmMenus = list()
+
+    def addSubGrmMenu(self, title=None, position=None):
+        '''
+        Creates a instances of itself as a sub menu and takes a position
+        :return:
+        '''
+        menu = GrmMenu()
+        self.subGrmMenus.append(menu)
+        menu.setParent(self)
+        menu.popup(position)
 
     def pressMe(self, event):
         pos = QtGui.QCursor.pos()
