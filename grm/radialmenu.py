@@ -325,13 +325,14 @@ class RadialMenu(QtWidgets.QMenu):
 
     def start(self):
         q_app = QtWidgets.QApplication.instance()
-        self.mousePressFilter = MousePressFilter()
-        self.mousePressFilter.setMenu(self)
-        q_app.installEventFilter(self.mousePressFilter)
+        if not self.mousePressFilter:
+            self.mousePressFilter = MousePressFilter()
+            self.mousePressFilter.setMenu(self)
+            q_app.installEventFilter(self.mousePressFilter)
+        self.mousePressFilter.active = True
 
     def stop(self):
-        q_app = QtWidgets.QApplication.instance()
-        q_app.removeEventFilter(self.mousePressFilter)
+        self.mousePressFilter.active = False
 
     def addItem(self, item=None):
         self.items.append(item)
@@ -840,15 +841,17 @@ class MousePressFilter(QtCore.QObject):
         :param event:
         :return:
         '''
-        if event.type() == QtCore.QEvent.MouseButtonPress:
-            # Show menu
-            if event.buttons() == self.mouse_button:
-                if not self.menu.isVisible():
-                    self.menu.popup(QtGui.QCursor.pos())
-            return QtCore.QObject.eventFilter(self, obj, event)
-        else:
-            # standard event processing
-            return QtCore.QObject.eventFilter(self, obj, event)
+        if self.active:
+            pressEvents = [QtCore.QEvent.TabletPress,
+                           QtCore.QEvent.MouseButtonPress]
+            if event.type() in pressEvents:
+                # Show menu
+                if event.buttons() == self.mouse_button:
+                    if not self.menu.isVisible():
+                        self.menu.popup(QtGui.QCursor.pos())
+                    return True
+        # standard event processing
+        return QtCore.QObject.eventFilter(self, obj, event)
 
 class GrmMenu(QtWidgets.QMenu):
     def __init__(self, items=None):
